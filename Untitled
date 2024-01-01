@@ -1,0 +1,54 @@
+| Kod                                                   | Açıklama                                                  |
+|-------------------------------------------------------|-----------------------------------------------------------|
+| from flask import Flask, render_template, request   | Flask web uygulaması oluşturmak ve işlemleri gerçekleştirmek için gerekli modülleri içeri aktarır. |
+| from flask_sqlalchemy import SQLAlchemy             | Flask uygulamasına SQLAlchemy entegrasyonu sağlamak için gerekli modülü içeri aktarır. |
+| app = Flask(__name__)                               | Flask uygulamasını oluşturur.                             |
+| app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///./email.db' | SQLite veritabanına bağlantı yapısını belirler.     |
+| app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False | SQLAlchemy modifikasyon takibini devre dışı bırakır.    |
+| db = SQLAlchemy(app)                                | SQLAlchemy'yi Flask uygulamasına bağlar.                  |
+| with app.app_context():                             | Flask uygulaması içindeki bağlamı belirtir.              |
+| drop_table = text('DROP TABLE IF EXISTS users;')   | 'users' tablosunu varsa siler.                            |
+| users_table = text("""CREATE TABLE users(...""")   | 'users' tablosunu oluşturur.                              |
+| data = text("""INSERT INTO users VALUES ...""")    | 'users' tablosuna örnek veriler ekler.                   |
+| db.session.execute(drop_table)                      | Veritabanında 'users' tablosunu silme SQL ifadesini çalıştırır. |
+| db.session.execute(users_table)                    | Veritabanına 'users' tablosunu oluşturma SQL ifadesini çalıştırır. |
+| db.session.execute(data)                           | Veritabanına örnek veriler eklenmesi SQL ifadesini çalıştırır. |
+| db.session.commit()                                 | Yapılan değişiklikleri veritabanına kaydetme işlemi yapar.  |
+| def find_emails(keyword):                           | Belirli bir anahtar kelimeye göre e-posta adreslerini bulan bir fonksiyon tanımlar. |
+| with app.app_context():                             | Flask uygulaması içindeki bağlamı belirtir.              |
+| query = text(f"""SELECT * FROM users WHERE username like '%{keyword}%';""") | Belirli bir anahtar kelimeye göre e-posta adreslerini sorgulama SQL ifadesini oluşturur. |
+| result = db.session.execute(query)                  | Sorgu sonucunu alır.                                      |
+| user_emails = [(row[0], row[1]) for row in result] | Sorgu sonucundaki verileri bir liste içinde tutar.          |
+| if not any(user_emails): user_emails = [("Not Found", "Not Found")] | Eğer hiç e-posta bulunamazsa, "Not Found" olarak işaretlenmiş bir tuple ekler.  |
+| return user_emails                                 | Bulunan e-posta adreslerini döndürür.                    |
+| def insert_email(name, email):                      | Belirli bir kullanıcı adı ve e-posta adresini ekleyen bir fonksiyon tanımlar. |
+| with app.app_context():                             | Flask uygulaması içindeki bağlamı belirtir.              |
+| query = text(f"""SELECT * FROM users WHERE username like '{name}'""") | Belirli bir kullanıcı adına göre sorgu yapma SQL ifadesini oluşturur. |
+| result = db.session.execute(query)                  | Sorgu sonucunu alır.                                      |
+| response = ''                                       | Yanıt değişkenini tanımlar.                               |
+| if len(name) == 0 or len(email) == 0:               | Kullanıcı adı veya e-posta boşsa...                       |
+| response = 'Username or email can not be empty!!'  | ...yanıtı 'Username or email can not be empty!!' olarak ayarlar. |
+| elif not any(result):                               | Eğer kullanıcı adı veritabanında yoksa...               |
+| insert = text(f"""INSERT INTO users VALUES ...""")  | Yeni kullanıcı bilgilerini eklemek için bir SQL ifadesi oluşturur. |
+| result = db.session.execute(insert)                 | SQL ifadesini çalıştırır.                                 |
+| db.session.commit()                                 | Yapılan değişiklikleri veritabanına kaydeder.                    |
+| response = text(f"User {name} and {email} have been added successfully") | Başarılı bir şekilde eklendiğine dair bir yanıt oluşturur. |
+| else: response = text(f"User {name} already exist") | Eğer kullanıcı adı zaten varsa, buna dair bir yanıt oluşturur. |
+| return response                                     | Yanıtı döndürür.                                          |
+| @app.route('/', methods=['GET', 'POST'])            | Ana sayfa için bir Flask rota tanımlar.                   |
+| with app.app_context():                             | Flask uygulaması içindeki bağlamı belirtir.              |
+| if request.method == 'POST':                        | Eğer istek türü POST ise...                               |
+| user_app_name = request.form['user_keyword']        | Kullanıcının girdiği anahtar kelimeyi alır.             |
+| user_emails = find_emails(user_app_name)            | Belirli bir anahtar kelimeye göre e-posta adreslerini bulur. |
+| return render_template('emails.html', name_emails=user_emails, keyword=user_app_name, show_result=True) | HTML şablonunu kullanarak e-posta adreslerini görüntüler. |
+| else: return render_template('emails.html', show_result=False) | Eğer istek türü POST değilse, e-posta adreslerini gösterme özelliğini kapatır. |
+| @app.route('/add', methods=['GET', 'POST'])         | E-posta eklemek için bir Flask rota tanımlar.            |
+| with app.app_context():                             | Flask uygulaması içindeki bağlamı belirtir.              |
+| if request.method == 'POST':                        | Eğer istek türü POST ise...                               |
+| user_app_name = request.form['username']            | Kullanıcının girdiği kullanıcı adını alır.              |
+| user_app_email = request.form['useremail']          | Kullanıcının girdiği e-posta adresini alır.             |
+| result_app = insert_email(user_app_name, user_app_email) | Kullanıcı adını ve e-posta adresini ekler.            |
+| return render_template('add-email.html', result_html=result_app, show_result=True) | HTML şablonunu kullanarak ekleme işleminin sonucunu görüntüler. |
+| else: return render_template('add-email.html', show_result=False) | Eğer istek türü POST değilse, ekleme işlemi sonucunu gösterme özelliğini kapatır. |
+| if __name__=='__main__':                            | Ana programın başlangıcını kontrol eder.                 |
+| app.run(debug=True)                                 | Flask uygulamasını debug modunda çalıştırır.            |
